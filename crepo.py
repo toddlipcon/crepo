@@ -49,6 +49,8 @@ def init(args):
     else:
       GitCommand(None, ["checkout"], cwd=workdir_for_project(project)).Wait()
 
+  ensure_remotes([])
+  fetch([])
   checkout_branches([])
 
 def ensure_remotes(args):
