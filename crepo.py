@@ -9,6 +9,9 @@ import logging
 from git_command import GitCommand
 from git_config import GitConfig
 
+
+#TODO(todd) default_revision should be default_refspec
+
 def load_manifest():
   return manifest.load_manifest("manifest.json")
 
@@ -38,6 +41,29 @@ def init(args):
     p.Wait()
 
   checkout_branches([])
+
+def ensure_remotes(args):
+  """Ensure that remotes are set up"""
+  man = load_manifest()
+  for (proj_name, project) in man.projects.iteritems():
+    cwd = workdir_for_project(project)
+    for remote_name in project.remotes:
+      remote = man.remotes[remote_name]
+      new_url = remote.fetch % proj_name
+      p = GitCommand(None, ["config", "--get", "remote.%s.url" % remote_name],
+                     cwd=cwd, capture_stdout=True)
+      if p.Wait() == 0:
+        cur_url = p.stdout.strip()
+        if cur_url != new_url:
+          p = GitCommand(None, ["config", "--set", "remote.%s.url" % remote_name,
+                                new_url],
+                         cwd=cwd)
+          p.Wait()
+      else:
+        p = GitCommand(None, ["remote", "add", remote_name,
+                              new_url],
+                       cwd=cwd)
+        p.Wait()
 
 def ensure_tracking_branches(args):
   """Ensures that the tracking branches are set up"""
@@ -132,13 +158,38 @@ def do_all_projects(args):
       p.Wait()
     print >>sys.stderr
 
+def do_all_projects_remotes(args):
+  """Run the given git-command in every project, once for each remote.
+
+  Pass -p to do it in parallel"""
+  man = load_manifest()
+
+  if args[0] == '-p':
+    parallel = True
+    del args[0]
+  else:
+    parallel = False
+
+  for (name, project) in man.projects.iteritems():
+    cwd = workdir_for_project(project)
+    for remote_name in project.remotes.keys():
+      cmd = args + [remote_name]
+      print >>sys.stderr, "In project: ", name, " running ", " ".join(cmd)
+      p = GitCommand(project=None,
+                     cwd=cwd,
+                     cmdv=cmd)
+      if not parallel:
+        p.Wait()
+      print >>sys.stderr
+
+
 def fetch(args):
   """Run git-fetch in every project"""
-  do_all_projects(["fetch"])
+  do_all_projects_remotes(["fetch"])
 
 def pull(args):
   """Run git-pull in every project"""
-  do_all_projects(["pull"])
+  do_all_projects_remotes(["pull"])
 
 def _tracking_status(dir, local_branch, remote_branch):
   """
@@ -197,7 +248,8 @@ COMMANDS = {
   'fetch': fetch,
   'pull': pull,
   'status': status,
-  'check-dirty': check_dirty
+  'check-dirty': check_dirty,
+  'setup-remotes': ensure_remotes
   }
 
 def usage():
