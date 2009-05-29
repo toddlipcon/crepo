@@ -10,7 +10,7 @@ from git_command import GitCommand
 from git_config import GitConfig
 
 
-#TODO(todd) default_revision should be default_refspec
+#TODO(todd) default_refspec should be default_refspec
 
 def load_manifest():
   return manifest.load_manifest("manifest.json")

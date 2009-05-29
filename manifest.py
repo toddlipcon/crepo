@@ -7,11 +7,11 @@ class Manifest(object):
   def __init__(self,
                remotes=[],
                projects={},
-               default_revision="master",
+               default_refspec="master",
                default_remote="origin"):
     self.remotes = remotes
     self.projects = projects
-    self.default_revision = default_revision
+    self.default_refspec = default_refspec
     self.default_remote = default_remote
 
   @staticmethod
@@ -26,7 +26,7 @@ class Manifest(object):
       for (name, d) in data.get('projects', {}).iteritems()])
     
     return Manifest(
-      default_revision=data.get("default-revision", "master"),
+      default_refspec=data.get("default-revision", "master"),
       default_remote=default_remote,
       projects=projects,
       remotes=remotes)
@@ -36,7 +36,7 @@ class Manifest(object):
 
   def data_for_json(self):
     return {
-      "default-revision": self.default_revision,
+      "default-revision": self.default_refspec,
       "default-remote": self.default_remote,
       "remotes": dict( [(name, remote.data_for_json()) for (name, remote) in self.remotes.iteritems()] ),
       "projects": dict( [(name, project.data_for_json()) for (name, project) in self.projects.iteritems()] ),
