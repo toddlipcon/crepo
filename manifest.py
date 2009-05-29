@@ -81,7 +81,16 @@ class Project(object):
     my_remotes = dict([ (r, remotes[r])
                         for r in my_remote_names])
 
-    from_remote = data.get('from-remote', default_remote)
+    from_remote = data.get('from-remote')
+    if not from_remote:
+      if len(my_remote_names) == 1:
+        from_remote = my_remote_names[0]
+      elif default_remote in my_remote_names:
+        from_remote = default_remote
+      else:
+        raise Exception("no from-remote listed for project %s, and more than one remote" %
+                        name)
+    
     assert from_remote in my_remote_names
     return Project(name=name,
                    remotes=my_remotes,
