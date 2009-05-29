@@ -37,8 +37,17 @@ def init(args):
     logging.warn("Initializing project: %s" % name)
     clone_remote = man.remotes[project.from_remote]
     clone_url = clone_remote.fetch % name
-    p = GitCommand(None, ["clone", clone_url, project.dir])
+    p = GitCommand(None, ["clone", "-o", project.from_remote, "-n", clone_url, project.dir])
     p.Wait()
+    p = GitCommand(None, ["show-ref", "-q", "HEAD"], cwd=workdir_for_project(project))
+    if p.Wait():
+      # There is no HEAD (maybe origin/master doesnt exist) so check out the tracking
+      # branch
+      GitCommand(None, ["checkout", "--track", "-b", project.tracking_branch,
+                        project.remote_refspec],
+                 cwd=workdir_for_project(project)).Wait()
+    else:
+      GitCommand(None, ["checkout"], cwd=workdir_for_project(project)).Wait()
 
   checkout_branches([])
 
