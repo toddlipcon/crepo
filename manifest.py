@@ -77,11 +77,12 @@ class Project(object):
 
   @staticmethod
   def from_dict(name, data, remotes, default_remote):
+    my_remote_names = data.get('remotes', [default_remote])
     my_remotes = dict([ (r, remotes[r])
-                        for r in data.get('remotes', [default_remote])])
+                        for r in my_remote_names])
 
     from_remote = data.get('from-remote', default_remote)
-    assert from_remote in remotes
+    assert from_remote in my_remote_names
     return Project(name=name,
                    remotes=my_remotes,
                    refspec=data.get('refspec', 'master'),
