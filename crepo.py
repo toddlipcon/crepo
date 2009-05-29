@@ -209,7 +209,7 @@ def fetch(args):
 
 def pull(args):
   """Run git-pull in every project"""
-  do_all_projects_remotes(args + ["pull"])
+  do_all_projects(args + ["pull"])
 
 def _tracking_status(dir, local_branch, remote_branch):
   """
