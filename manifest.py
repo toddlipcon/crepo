@@ -6,7 +6,7 @@ import os
 class Manifest(object):
   def __init__(self,
                remotes=[],
-               projects=[],
+               projects={},
                default_revision="master",
                default_remote="origin"):
     self.remotes = remotes
@@ -87,6 +87,14 @@ class Project(object):
                    refspec=data.get('refspec', 'master'),
                    dir=data.get('dir', name),
                    from_remote=from_remote)
+
+  @property
+  def tracking_branch(self):
+    return self.refspec
+
+  @property
+  def remote_refspec(self):
+    return "%s/%s" % (self.from_remote, self.refspec)
 
   def to_json(self):
     return simplejson.dumps(self.data_for_json())
