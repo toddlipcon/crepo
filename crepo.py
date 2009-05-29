@@ -148,6 +148,8 @@ def do_all_projects(args):
   else:
     parallel = False
 
+  towait = []
+
   for (name, project) in man.projects.iteritems():
     cwd = workdir_for_project(project)
     print >>sys.stderr, "In project: ", name, " running ", " ".join(args)
@@ -156,8 +158,13 @@ def do_all_projects(args):
                    cmdv=args)
     if not parallel:
       p.Wait()
-    print >>sys.stderr
+      print >>sys.stderr
+    else:
+      towait.append(p)
 
+  for p in towait:
+    p.Wait()
+      
 def do_all_projects_remotes(args):
   """Run the given git-command in every project, once for each remote.
 
@@ -169,6 +176,7 @@ def do_all_projects_remotes(args):
     del args[0]
   else:
     parallel = False
+  towait = []
 
   for (name, project) in man.projects.iteritems():
     cwd = workdir_for_project(project)
@@ -180,16 +188,20 @@ def do_all_projects_remotes(args):
                      cmdv=cmd)
       if not parallel:
         p.Wait()
-      print >>sys.stderr
+        print >>sys.stderr
+      else:
+        towait.append(p)
+  for p in towait:
+    p.Wait()
 
 
 def fetch(args):
   """Run git-fetch in every project"""
-  do_all_projects_remotes(["fetch"])
+  do_all_projects_remotes(args + ["fetch"])
 
 def pull(args):
   """Run git-pull in every project"""
-  do_all_projects_remotes(["pull"])
+  do_all_projects_remotes(args + ["pull"])
 
 def _tracking_status(dir, local_branch, remote_branch):
   """
