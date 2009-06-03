@@ -33,3 +33,38 @@ class GitRepo(object):
                    cmdv=cmdv,
                    **kwargs)
     return p
+
+
+  def is_dirty(self):
+    return self.is_workdir_dirty() or self.is_index_dirty()
+
+  def is_workdir_dirty(self):
+    return self.command(["diff", "--quiet"])
+
+  def is_index_dirty(self):
+    return self.command(["diff", "--quiet", "--cached"])
+
+  def tracking_status(self, local_branch, remote_branch):
+    """
+    Return a tuple (left_commits, right_commits). The first element
+    is the number of commits in the local branch and not in remote.
+    The second element is the other direction
+    """
+    stdout = self.check_command(["rev-list", "--left-right",
+                                 "%s...%s" % (local_branch, remote_branch)],
+                                capture_stdout=True)
+    commits = stdout.strip().split("\n")
+    left_commits, right_commits = (0,0)
+    for commit in commits:
+      if not commit: continue
+      if commit[0] == '<':
+        left_commits += 1
+      else:
+        right_commits += 1
+
+    return (left_commits, right_commits)
+
+  def current_branch(self):
+    stdout = self.check_command(["symbolic-ref", "HEAD"],
+                                capture_stdout=True)
+    return stdout.rstrip().replace("refs/heads/", "")

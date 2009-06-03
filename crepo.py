@@ -90,17 +90,20 @@ def check_dirty(args):
   any_dirty = False
   for (name, project) in man.projects.iteritems():
     repo = GitRepo(workdir_for_project(project))
-    workdir_dirty = repo.command(["diff", "--quiet"])
-    index_dirty = repo.command(["diff", "--quiet", "--cached"])
-
-    if workdir_dirty:
-      print "Project %s has a dirty working directory (unstaged changes)." % name
-    if index_dirty:
-      print "Project %s has a dirty index (staged changes)." % name
-
-    any_dirty = any_dirty or workdir_dirty or index_dirty
-
+    any_dirty = check_dirty_repo(repo) or any_dirty
   return any_dirty
+
+def check_dirty_repo(repo, indent=0):
+  workdir_dirty = repo.is_workdir_dirty()
+  index_dirty = repo.is_index_dirty()
+
+  if workdir_dirty:
+    print " " * indent, "Project %s has a dirty working directory (unstaged changes)." % name
+  if index_dirty:
+    print " " * indent, "Project %s has a dirty index (staged changes)." % name
+
+  return workdir_dirty or index_dirty
+
 
 def checkout_branches(args):
   """Checks out the tracking branches listed in the manifest."""
@@ -189,31 +192,10 @@ def pull(args):
   """Run git-pull in every project"""
   do_all_projects(args + ["pull"])
 
-def _tracking_status(dir, local_branch, remote_branch):
-  """
-  Return a tuple (left_commits, right_commits). The
-  first element is the number of commits in the local branch and not in remote.
-  The second element is the other direction
-  """
-  repo = GitRepo(dir)
-  stdout = repo.check_command(["rev-list", "--left-right",
-                               "%s...%s" % (local_branch, remote_branch)],
-                              capture_stdout=True)
-  commits = stdout.strip().split("\n")
-  left_commits, right_commits = (0,0)
-  for commit in commits:
-    if not commit: continue
-    if commit[0] == '<':
-      left_commits += 1
-    else:
-      right_commits += 1
-
-  return (left_commits, right_commits)
-
 def _format_tracking(local_branch, remote_branch,
                      left, right):
   """
-  Takes a tuple returned by _tracking_status and outputs a nice string
+  Takes a tuple returned by repo.tracking_status and outputs a nice string
   describing the state of the repository.
   """
   if (left,right) == (0,0):
@@ -229,6 +211,15 @@ def _format_tracking(local_branch, remote_branch,
             "%d and %d revisions." %
             (local_branch, project.remote_branch, left, right))
 
+def project_status(project, indent=0):
+  repo = GitRepo(workdir_for_project(project))
+  repo_status(repo, project.tracking_branch, project.remote_refspec, indent=indent)
+
+def repo_status(repo, tracking_branch, remote_refspec, indent=0):
+  (left, right) = repo.tracking_status(tracking_branch, remote_refspec)
+  text = _format_tracking(tracking_branch, remote_refspec, left, right)
+  indent_str = " " * indent
+  print textwrap.fill(text, initial_indent=indent_str, subsequent_indent=indent_str)
 
 def status(args):
   """Shows where your branches have diverged from the specified remotes."""
@@ -240,12 +231,37 @@ def status(args):
     first = False
 
     print "Project %s:" % name
+    project_status(project, indent=2)
+    check_dirty_repo(GitRepo(workdir_for_project(project)),
+                     indent=2)
 
-    cwd = workdir_for_project(project)
-    (left, right) = _tracking_status(cwd, project.tracking_branch, project.remote_refspec)
-    text = _format_tracking(project.tracking_branch, project.remote_refspec,
-                            left, right)
-    print textwrap.fill(text, initial_indent="  ", subsequent_indent="  ")
+  man_repo = get_manifest_repo()
+  if man_repo:
+    print
+    print "Manifest repo:"
+    repo_status(man_repo,
+                man_repo.current_branch(),
+                "origin/" + man_repo.current_branch(),
+                indent=2)
+    check_dirty_repo(man_repo, indent=2)
+
+
+def get_manifest_repo():
+  """
+  Return a GitRepo object pointing to the repository that contains
+  the crepo manifest.
+  """
+  # root dir is cwd for now
+  cdup = GitRepo(".").command_process(["rev-parse", "--show-cdup"],
+                                      capture_stdout=True,
+                                      capture_stderr=True)
+  if cdup.Wait() != 0:
+    return None
+  cdup_path = cdup.stdout.strip()
+  if cdup_path:
+    return GitRepo(cdup_path)
+  else:
+    return GitRepo(".")
 
 
 COMMANDS = {
