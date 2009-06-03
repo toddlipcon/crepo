@@ -216,6 +216,11 @@ def project_status(project, indent=0):
   repo_status(repo, project.tracking_branch, project.remote_refspec, indent=indent)
 
 def repo_status(repo, tracking_branch, remote_refspec, indent=0):
+  # Make sure the right branch is checked out
+  if repo.current_branch() != tracking_branch:
+    print " " * indent + ("Checked out branch is %s instead of %s" %
+                         (repo.current_branch(), tracking_branch))
+  # Print tracking branch status
   (left, right) = repo.tracking_status(tracking_branch, remote_refspec)
   text = _format_tracking(tracking_branch, remote_refspec, left, right)
   indent_str = " " * indent
