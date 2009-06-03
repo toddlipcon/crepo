@@ -174,7 +174,7 @@ def do_all_projects_remotes(args):
     for remote_name in project.remotes.keys():
       cmd = args + [remote_name]
       print >>sys.stderr, "In project: ", name, " running ", " ".join(cmd)
-      p = repo.command_process(cmdv)
+      p = repo.command_process(cmd)
       if not parallel:
         p.Wait()
         print >>sys.stderr
