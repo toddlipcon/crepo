@@ -7,7 +7,6 @@ import optparse
 import manifest
 import logging
 from git_command import GitCommand
-from git_config import GitConfig
 
 def load_manifest():
   return manifest.load_manifest("manifest.json")
@@ -240,7 +239,7 @@ def status(args):
   for (name, project) in man.projects.iteritems():
     if not first: print
     first = False
-    
+
     print "Project %s:" % name
     cwd = workdir_for_project(project)
     (left, right) = _tracking_status(cwd, project.tracking_branch, project.remote_refspec)
