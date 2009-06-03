@@ -8,6 +8,7 @@ import manifest
 import logging
 import textwrap
 from git_command import GitCommand
+from git_repo import GitRepo
 
 def load_manifest():
   return manifest.load_manifest("manifest.json")
@@ -36,15 +37,15 @@ def init(args):
     clone_url = clone_remote.fetch % name
     p = GitCommand(None, ["clone", "-o", project.from_remote, "-n", clone_url, project.dir])
     p.Wait()
-    p = GitCommand(None, ["show-ref", "-q", "HEAD"], cwd=workdir_for_project(project))
-    if p.Wait():
+
+    repo = GitRepo(workdir_for_project(project))
+    if repo.command(["show-ref", "-q", "HEAD"]) != 0:
       # There is no HEAD (maybe origin/master doesnt exist) so check out the tracking
       # branch
-      GitCommand(None, ["checkout", "--track", "-b", project.tracking_branch,
-                        project.remote_refspec],
-                 cwd=workdir_for_project(project)).Wait()
+      repo.check_command(["checkout", "--track", "-b", project.tracking_branch,
+                        project.remote_refspec])
     else:
-      GitCommand(None, ["checkout"], cwd=workdir_for_project(project)).Wait()
+      repo.check_command(["checkout"])
 
   ensure_remotes([])
   fetch([])
@@ -54,57 +55,43 @@ def ensure_remotes(args):
   """Ensure that remotes are set up"""
   man = load_manifest()
   for (proj_name, project) in man.projects.iteritems():
-    cwd = workdir_for_project(project)
+    repo = GitRepo(workdir_for_project(project))
     for remote_name in project.remotes:
       remote = man.remotes[remote_name]
       new_url = remote.fetch % proj_name
-      p = GitCommand(None, ["config", "--get", "remote.%s.url" % remote_name],
-                     cwd=cwd, capture_stdout=True)
+
+      p = repo.command_process(["config", "--get", "remote.%s.url" % remote_name],
+                               capture_stdout=True)
       if p.Wait() == 0:
         cur_url = p.stdout.strip()
         if cur_url != new_url:
-          p = GitCommand(None, ["config", "--set", "remote.%s.url" % remote_name,
-                                new_url],
-                         cwd=cwd)
-          p.Wait()
+          repo.check_command(["config", "--set", "remote.%s.url" % remote_name, new_url])
       else:
-        p = GitCommand(None, ["remote", "add", remote_name,
-                              new_url],
-                       cwd=cwd)
-        p.Wait()
+        repo.check_command(["remote", "add", remote_name, new_url])
 
 def ensure_tracking_branches(args):
   """Ensures that the tracking branches are set up"""
   man = load_manifest()
   for (name, project) in man.projects.iteritems():
-    cwd = workdir_for_project(project)
-
-    p = GitCommand(project=None,
-                   cwd=cwd,
-                   cmdv=["rev-parse", "--verify", "-q", project.refspec],
-                   capture_stdout=True)
-    # Make the tracking branch if it doesn't exist
-    if p.Wait() != 0:
+    repo = GitRepo(workdir_for_project(project))
+    branch_missing = repo.command(
+      ["rev-parse", "--verify", "-q", project.refspec],
+      capture_stdout=True)
+    
+    if branch_missing:
       logging.warn("Branch %s does not exist in project %s. checking out." %
                    (project.refspec, name))
-      p = GitCommand(project=None,
-                     cwd=cwd,
-                     cmdv=["branch", "--track",
-                           project.tracking_branch, project.remote_refspec])  
+      repo.command(["branch", "--track",
+                    project.tracking_branch, project.remote_refspec])
 
 def check_dirty(args):
   """Prints output if any projects have dirty working dirs or indexes."""
   man = load_manifest()
   any_dirty = False
   for (name, project) in man.projects.iteritems():
-    cwd = workdir_for_project(project)
-    p = GitCommand(project=None, cwd=cwd,
-                   cmdv=["diff", "--quiet"])
-    workdir_dirty = p.Wait()
-
-    p = GitCommand(project=None, cwd=cwd,
-                   cmdv=["diff", "--quiet", "--cached"])
-    index_dirty = p.Wait()
+    repo = GitRepo(workdir_for_project(project))
+    workdir_dirty = repo.command(["diff", "--quiet"])
+    index_dirty = repo.command(["diff", "--quiet", "--cached"])
 
     if workdir_dirty:
       print "Project %s has a dirty working directory (unstaged changes)." % name
@@ -125,11 +112,9 @@ def checkout_branches(args):
   man = load_manifest()
   for (name, project) in man.projects.iteritems():
     print >>sys.stderr, "Checking out tracking branch in project: %s" % name
-    cwd = workdir_for_project(project)
+    repo = GitRepo(workdir_for_project(project))
     # Check that sucker out
-    p = GitCommand(project=None, cwd=cwd,
-                   cmdv=["checkout", project.tracking_branch])
-    p.Wait()
+    repo.check_command(["checkout", project.tracking_branch])
 
 def hard_reset_branches(args):
   """Hard-resets your tracking branches to match the remotes."""
@@ -137,11 +122,8 @@ def hard_reset_branches(args):
   man = load_manifest()
   for (name, project) in man.projects.iteritems():
     print >>sys.stderr, "Hard resetting tracking branch in project: %s" % name
-    cwd = workdir_for_project(project)
-    # Check that sucker out
-    p = GitCommand(project=None, cwd=cwd,
-                   cmdv=["reset", "--hard", project.remote_refspec])
-    p.Wait()
+    repo = GitRepo(workdir_for_project(project))
+    repo.check_command(["reset", "--hard", project.remote_refspec])
   
 
 def do_all_projects(args):
@@ -159,11 +141,9 @@ def do_all_projects(args):
   towait = []
 
   for (name, project) in man.projects.iteritems():
-    cwd = workdir_for_project(project)
+    repo = GitRepo(workdir_for_project(project))
     print >>sys.stderr, "In project: ", name, " running ", " ".join(args)
-    p = GitCommand(project=None,
-                   cwd=cwd,
-                   cmdv=args)
+    p = repo.command_process(args)
     if not parallel:
       p.Wait()
       print >>sys.stderr
@@ -187,13 +167,11 @@ def do_all_projects_remotes(args):
   towait = []
 
   for (name, project) in man.projects.iteritems():
-    cwd = workdir_for_project(project)
+    repo = GitRepo(workdir_for_project(project))
     for remote_name in project.remotes.keys():
       cmd = args + [remote_name]
       print >>sys.stderr, "In project: ", name, " running ", " ".join(cmd)
-      p = GitCommand(project=None,
-                     cwd=cwd,
-                     cmdv=cmd)
+      p = repo.command_process(cmdv)
       if not parallel:
         p.Wait()
         print >>sys.stderr
@@ -217,12 +195,12 @@ def _tracking_status(dir, local_branch, remote_branch):
   first element is the number of commits in the local branch and not in remote.
   The second element is the other direction
   """
-  p = GitCommand(project=None, cwd=dir,
-                 cmdv=["rev-list", "--left-right", "%s...%s" % (local_branch, remote_branch)],
-                 capture_stdout=True)
-  p.Wait()
-  commits = p.stdout.strip().split("\n")
-  left_commits,right_commits = (0,0)
+  repo = GitRepo(dir)
+  stdout = repo.check_command(["rev-list", "--left-right",
+                               "%s...%s" % (local_branch, remote_branch)],
+                              capture_stdout=True)
+  commits = stdout.strip().split("\n")
+  left_commits, right_commits = (0,0)
   for commit in commits:
     if not commit: continue
     if commit[0] == '<':
