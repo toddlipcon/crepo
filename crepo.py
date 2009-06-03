@@ -97,10 +97,11 @@ def check_dirty_repo(repo, indent=0):
   workdir_dirty = repo.is_workdir_dirty()
   index_dirty = repo.is_index_dirty()
 
+  name = repo.name
   if workdir_dirty:
-    print " " * indent, "Project %s has a dirty working directory (unstaged changes)." % name
+    print " " * indent + "Project %s has a dirty working directory (unstaged changes)." % name
   if index_dirty:
-    print " " * indent, "Project %s has a dirty index (staged changes)." % name
+    print " " * indent + "Project %s has a dirty index (staged changes)." % name
 
   return workdir_dirty or index_dirty
 

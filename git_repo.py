@@ -2,6 +2,7 @@
 # (c) Copyright 2009 Cloudera, Inc.
 
 from git_command import GitCommand
+import os
 
 class GitRepo(object):
   def __init__(self, path):
@@ -68,3 +69,8 @@ class GitRepo(object):
     stdout = self.check_command(["symbolic-ref", "HEAD"],
                                 capture_stdout=True)
     return stdout.rstrip().replace("refs/heads/", "")
+
+
+  @property
+  def name(self):
+    return os.path.basename(os.path.realpath(self.path))
