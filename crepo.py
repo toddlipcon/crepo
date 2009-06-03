@@ -6,6 +6,7 @@ import sys
 import optparse
 import manifest
 import logging
+import textwrap
 from git_command import GitCommand
 
 def load_manifest():
@@ -231,6 +232,26 @@ def _tracking_status(dir, local_branch, remote_branch):
 
   return (left_commits, right_commits)
 
+def _format_tracking(local_branch, remote_branch,
+                     left, right):
+  """
+  Takes a tuple returned by _tracking_status and outputs a nice string
+  describing the state of the repository.
+  """
+  if (left,right) == (0,0):
+    return "Your tracking branch and remote branches are up to date."
+  elif left == 0:
+    return ("The remote branch %s is %d revisions ahead of tracking branch %s." %
+            (remote_branch, right, local_branch))
+  elif right == 0:
+    return ("Your tracking branch %s is %s revisions ahead of remote branch %s." %
+            (local_branch, left, remote_branch))
+  else:
+    return ("Your local branch %s and remote branch %s have diverged by " +
+            "%d and %d revisions." %
+            (local_branch, project.remote_branch, left, right))
+
+
 def status(args):
   """Shows where your branches have diverged from the specified remotes."""
   ensure_tracking_branches([])
@@ -241,21 +262,12 @@ def status(args):
     first = False
 
     print "Project %s:" % name
+
     cwd = workdir_for_project(project)
     (left, right) = _tracking_status(cwd, project.tracking_branch, project.remote_refspec)
-    if (left,right) == (0,0):
-      print "  Your tracking branch and remote branches are up to date."""
-    elif left == 0:
-      print "  The remote branch %s is %d revisions ahead of tracking branch %s." % \
-            (project.remote_refspec, right, project.tracking_branch)
-    elif right == 0:
-      print ("  Your tracking branch %s is %s revisions ahead of\n" +
-             "  remote branch %s.") % \
-             (project.tracking_branch, left, project.remote_refspec)
-    else:
-      print ("  Your local branch %s and remote branch %s\n" +
-             "  have diverged by %d and %d revisions.") % \
-             (project.tracking_branch, project.remote_branch, left, right)
+    text = _format_tracking(project.tracking_branch, project.remote_refspec,
+                            left, right)
+    print textwrap.fill(text, initial_indent="  ", subsequent_indent="  ")
 
 
 COMMANDS = {
