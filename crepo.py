@@ -208,8 +208,8 @@ def _format_tracking(local_branch, remote_branch,
     return ("Your tracking branch %s is %s revisions ahead of remote branch %s." %
             (local_branch, left, remote_branch))
   else:
-    return ("Your local branch %s and remote branch %s have diverged by " +
-            "%d and %d revisions." %
+    return (("Your local branch %s and remote branch %s have diverged by " +
+            "%d and %d revisions.") %
             (local_branch, remote_branch, left, right))
 
 def project_status(project, indent=0):
