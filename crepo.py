@@ -210,7 +210,7 @@ def _format_tracking(local_branch, remote_branch,
   else:
     return ("Your local branch %s and remote branch %s have diverged by " +
             "%d and %d revisions." %
-            (local_branch, project.remote_branch, left, right))
+            (local_branch, remote_branch, left, right))
 
 def project_status(project, indent=0):
   repo = GitRepo(workdir_for_project(project))
