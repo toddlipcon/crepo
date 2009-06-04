@@ -77,6 +77,12 @@ class GitRepo(object):
                                 capture_stdout=True)
     return stdout.rstrip()
 
+  def has_ref(self, ref):
+    p = self.command_process(['rev-parse', '--verify', '-q', ref],
+                             capture_stdout=True)
+    return p.Wait() == 0
+    
+
   @property
   def name(self):
     return os.path.basename(os.path.realpath(self.path))

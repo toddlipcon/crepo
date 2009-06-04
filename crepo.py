@@ -216,14 +216,29 @@ def project_status(project, indent=0):
   repo = GitRepo(workdir_for_project(project))
   repo_status(repo, project.tracking_branch, project.remote_refspec, indent=indent)
 
-def repo_status(repo, tracking_branch, remote_refspec, indent=0):
+def repo_status(repo, tracking_branch, remote_ref, indent=0):
   # Make sure the right branch is checked out
   if repo.current_branch() != tracking_branch:
     print " " * indent + ("Checked out branch is %s instead of %s" %
                          (repo.current_branch(), tracking_branch))
+
+  # Make sure the branches exist
+  has_tracking = repo.has_ref(tracking_branch)
+  has_remote = repo.has_ref(remote_ref)
+
+  if not has_tracking:
+    print " " * indent + "You appear to be missing the tracking branch " + \
+          tracking_branch
+  if not has_remote:
+    print " " * indent + "You appear to be missing the remote branch " + \
+          remote_ref
+
+  if not has_tracking or not has_remote:
+    return
+
   # Print tracking branch status
-  (left, right) = repo.tracking_status(tracking_branch, remote_refspec)
-  text = _format_tracking(tracking_branch, remote_refspec, left, right)
+  (left, right) = repo.tracking_status(tracking_branch, remote_ref)
+  text = _format_tracking(tracking_branch, remote_ref, left, right)
   indent_str = " " * indent
   print textwrap.fill(text, initial_indent=indent_str, subsequent_indent=indent_str)
 
