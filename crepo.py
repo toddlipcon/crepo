@@ -269,6 +269,36 @@ def get_manifest_repo():
   else:
     return GitRepo(".")
 
+def dump_refs(args):
+  """
+  Output a list of all repositories along with their
+  checked out branches and their hashes.
+  """
+  man = load_manifest()
+  first = True
+  for (name, project) in man.projects.iteritems():
+    if not first: print
+    first = False
+    print "Project %s:" % name
+
+    repo = GitRepo(workdir_for_project(project))
+    print "  HEAD: %s" % repo.rev_parse("HEAD")
+    print "  Symbolic: %s" % repo.current_branch()
+    project_status(project, indent=2)
+
+  repo = get_manifest_repo()
+  if repo:
+    print
+    print "Manifest repo:"
+    print "  HEAD: %s" % repo.rev_parse("HEAD")
+    print "  Symbolic: %s" % repo.current_branch()
+    repo_status(repo,
+                repo.current_branch(),
+                "origin/" + repo.current_branch(),
+                indent=2)
+    check_dirty_repo(repo, indent=2)
+  
+
 
 COMMANDS = {
   'help': help,
@@ -280,7 +310,8 @@ COMMANDS = {
   'pull': pull,
   'status': status,
   'check-dirty': check_dirty,
-  'setup-remotes': ensure_remotes
+  'setup-remotes': ensure_remotes,
+  'dump-refs': dump_refs
   }
 
 def usage():

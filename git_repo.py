@@ -72,6 +72,11 @@ class GitRepo(object):
     return stdout.rstrip().replace("refs/heads/", "")
 
 
+  def rev_parse(self, rev):
+    stdout = self.check_command(['rev-parse', 'HEAD'],
+                                capture_stdout=True)
+    return stdout.rstrip()
+
   @property
   def name(self):
     return os.path.basename(os.path.realpath(self.path))
