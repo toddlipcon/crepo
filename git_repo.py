@@ -22,9 +22,10 @@ class GitRepo(object):
     code returned is non-zero.
     """
     p = self.command_process(cmdv, capture_stdout=capture_stdout)
-    if p.Wait() != 0:
+    rc = p.Wait()
+    if rc != 0:
       raise Exception("Command %s returned non-zero exit code: %d" %
-                      repr(cmdv), rc)
+                      (repr(cmdv), rc))
     if capture_stdout:
       return p.stdout
 
